@@ -2,14 +2,16 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from transformer.app import EnhancedFrenchTextHumanizer, NLP_FR
+from transformer.app import BilingualTextHumanizer  # Updated import
 import time
 import io
 
 
 def main():
     """
-    Enhanced Streamlit app to humanize French text using the improved humanizer:
+    Enhanced Streamlit app to humanize text using the bilingual humanizer:
+    - Supports both English and French
+    - Automatic language detection
     - Multiple tone options (academic/casual)
     - Advanced text analysis and visualization
     - Configurable parameters
@@ -17,12 +19,12 @@ def main():
     """
     
     st.set_page_config(
-        page_title="Humaniseur de Texte IA Avancé",
+        page_title="🌍 Bilingual AI Text Humanizer",
         page_icon="🧔🏻‍♂️",
         layout="wide",
         initial_sidebar_state="expanded",
         menu_items={
-            'About': "# Application avancée pour humaniser du texte généré par IA en français avec analyse détaillée."
+            'About': "# Advanced bilingual application to humanize AI-generated text in English and French with detailed analysis."
         }
     )
 
@@ -35,7 +37,7 @@ def main():
             font-size: 2.5em;
             font-weight: bold;
             margin-top: 0.5em;
-            background: linear-gradient(90deg, #1f77b4, #ff7f0e);
+            background: linear-gradient(90deg, #1f77b4, #ff7f0e, #2ca02c);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
@@ -71,25 +73,50 @@ def main():
             padding: 0.5em 2em;
             font-weight: bold;
         }
+        .language-badge {
+            display: inline-block;
+            padding: 0.2em 0.8em;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin: 0.2em;
+        }
+        .lang-en {
+            background-color: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #1976d2;
+        }
+        .lang-fr {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+            border: 1px solid #7b1fa2;
+        }
+        .lang-auto {
+            background-color: #e8f5e8;
+            color: #388e3c;
+            border: 1px solid #388e3c;
+        }
         </style>
         """,
         unsafe_allow_html=True
     )
 
     # Header
-    st.markdown("<div class='title'>🧔🏻‍♂️ Humaniseur de Texte IA Avancé 🤖</div>", unsafe_allow_html=True)
+    st.markdown("<div class='title'>🌍 Bilingual AI Text Humanizer 🤖</div>", unsafe_allow_html=True)
     
     st.markdown(
         """
         <div class='intro'>
-        <h4>🚀 Transformez votre texte IA en contenu naturel et humain</h4>
-        <p><b>Fonctionnalités avancées :</b></p>
+        <h4>🚀 Transform your AI text into natural, human-like content</h4>
+        <p><b>🌍 Bilingual Features:</b></p>
         <ul>
-        <li>🎯 <b>Tons multiples</b> : Académique ou décontracté</li>
-        <li>🔄 <b>Remplacement intelligent</b> : Synonymes contextuels</li>
-        <li>📊 <b>Analyse détaillée</b> : Métriques de complexité</li>
-        <li>⚙️ <b>Paramètres configurables</b> : Contrôle précis des transformations</li>
-        <li>📁 <b>Traitement par lots</b> : Plusieurs fichiers simultanément</li>
+        <li>🇺🇸🇫🇷 <b>Dual Language Support</b>: English and French processing</li>
+        <li>🔍 <b>Smart Detection</b>: Automatic language identification</li>
+        <li>🎯 <b>Multiple Tones</b>: Academic or casual styles</li>
+        <li>🔄 <b>Intelligent Replacement</b>: Context-aware synonyms</li>
+        <li>📊 <b>Detailed Analysis</b>: Complexity metrics and visualizations</li>
+        <li>⚙️ <b>Configurable Parameters</b>: Precise transformation control</li>
+        <li>📁 <b>Batch Processing</b>: Multiple files simultaneously</li>
         </ul>
         </div>
         """,
@@ -98,137 +125,150 @@ def main():
 
     # Sidebar for advanced configuration
     with st.sidebar:
-        st.header("⚙️ Configuration Avancée")
+        st.header("⚙️ Advanced Configuration")
+        
+        # Language selection
+        language_option = st.selectbox(
+            "🌍 Language Processing",
+            options=["auto", "en", "fr"],
+            format_func=lambda x: {
+                "auto": "🔍 Auto-detect",
+                "en": "🇺🇸 English",
+                "fr": "🇫🇷 French"
+            }[x],
+            help="Choose language processing mode"
+        )
         
         # Tone selection
         tone = st.selectbox(
-            "🎨 Ton du texte",
+            "🎨 Text Tone",
             options=["academic", "casual"],
-            format_func=lambda x: "🎓 Académique" if x == "academic" else "💬 Décontracté",
-            help="Choisissez le style de transformation souhaité"
+            format_func=lambda x: "🎓 Academic" if x == "academic" else "💬 Casual",
+            help="Choose the desired transformation style"
         )
         
         st.markdown("---")
         
         # Advanced parameters
-        st.subheader("🔧 Paramètres de Transformation")
+        st.subheader("🔧 Transformation Parameters")
         
         p_synonym = st.slider(
-            "Remplacement de synonymes",
+            "Synonym Replacement",
             min_value=0.0,
             max_value=1.0,
             value=0.25,
             step=0.05,
-            help="Probabilité de remplacer un mot par un synonyme"
+            help="Probability of replacing a word with a synonym"
         )
         
         p_restructure = st.slider(
-            "Restructuration de phrases",
+            "Sentence Restructuring",
             min_value=0.0,
             max_value=0.5,
             value=0.2,
             step=0.05,
-            help="Probabilité de restructurer une phrase"
+            help="Probability of restructuring a sentence"
         )
         
         p_transition = st.slider(
-            "Ajout de transitions",
+            "Transition Addition",
             min_value=0.0,
             max_value=0.5,
             value=0.15,
             step=0.05,
-            help="Probabilité d'ajouter des mots de transition"
+            help="Probability of adding transition words"
         )
         
         p_errors = st.slider(
-            "Imperfections naturelles",
+            "Natural Imperfections",
             min_value=0.0,
             max_value=0.2,
             value=0.05,
             step=0.01,
-            help="Probabilité d'ajouter de petites imperfections naturelles"
+            help="Probability of adding subtle natural imperfections"
         )
         
         preserve_meaning = st.checkbox(
-            "🔒 Préserver le sens strict",
+            "🔒 Preserve Strict Meaning",
             value=True,
-            help="Utilise la similarité sémantique pour un meilleur choix de synonymes"
+            help="Use semantic similarity for better synonym selection"
         )
         
         show_analysis = st.checkbox(
-            "📊 Afficher l'analyse détaillée",
+            "📊 Show Detailed Analysis",
             value=True,
-            help="Montre les métriques et graphiques d'analyse"
+            help="Display metrics and analysis charts"
         )
 
     # Main content area
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.subheader("📝 Texte d'Entrée")
+        st.subheader("📝 Input Text")
         
         # Text input methods
         input_method = st.radio(
-            "Méthode d'entrée :",
-            ["Saisie directe", "Fichier unique", "Fichiers multiples"],
+            "Input Method:",
+            ["Direct Input", "Single File", "Multiple Files"],
             horizontal=True
         )
         
         user_text = ""
         files_data = []
         
-        if input_method == "Saisie directe":
+        if input_method == "Direct Input":
             user_text = st.text_area(
-                "Entrez votre texte ici :",
+                "Enter your text here:",
                 height=200,
-                placeholder="Collez votre texte généré par IA ici..."
+                placeholder="Paste your AI-generated text here...\n\nSupports both English and French text!"
             )
             
-        elif input_method == "Fichier unique":
+        elif input_method == "Single File":
             uploaded_file = st.file_uploader(
-                "Téléversez un fichier :",
+                "Upload a file:",
                 type=["txt", "md"],
-                help="Formats supportés : .txt, .md"
+                help="Supported formats: .txt, .md"
             )
             if uploaded_file is not None:
                 user_text = uploaded_file.read().decode("utf-8", errors="ignore")
-                st.text_area("Aperçu du fichier :", value=user_text[:500] + "..." if len(user_text) > 500 else user_text, height=100)
+                st.text_area("File Preview:", value=user_text[:500] + "..." if len(user_text) > 500 else user_text, height=100)
                 
         else:  # Multiple files
             uploaded_files = st.file_uploader(
-                "Téléversez plusieurs fichiers :",
+                "Upload multiple files:",
                 type=["txt", "md"],
                 accept_multiple_files=True,
-                help="Sélectionnez plusieurs fichiers pour un traitement par lots"
+                help="Select multiple files for batch processing"
             )
             if uploaded_files:
                 for file in uploaded_files:
                     content = file.read().decode("utf-8", errors="ignore")
                     files_data.append({"name": file.name, "content": content})
-                st.success(f"✅ {len(files_data)} fichier(s) chargé(s)")
+                st.success(f"✅ {len(files_data)} file(s) loaded")
 
     with col2:
-        st.subheader("✨ Résultat Transformé")
+        st.subheader("✨ Transformed Result")
         
-        if st.button("🚀 Transformer le Texte", type="primary"):
-            if input_method != "Fichiers multiples" and not user_text.strip():
-                st.warning("⚠️ Veuillez entrer ou téléverser un texte à transformer.")
-            elif input_method == "Fichiers multiples" and not files_data:
-                st.warning("⚠️ Veuillez téléverser au moins un fichier.")
+        if st.button("🚀 Transform Text", type="primary"):
+            if input_method != "Multiple Files" and not user_text.strip():
+                st.warning("⚠️ Please enter or upload text to transform.")
+            elif input_method == "Multiple Files" and not files_data:
+                st.warning("⚠️ Please upload at least one file.")
             else:
-                with st.spinner("🔄 Transformation en cours..."):
+                with st.spinner("🔄 Transformation in progress..."):
                     try:
-                        # Initialize humanizer with custom parameters
-                        humanizer = EnhancedFrenchTextHumanizer(
+                        # Initialize bilingual humanizer with custom parameters
+                        humanizer = BilingualTextHumanizer(
                             p_synonym_replacement=p_synonym,
                             p_sentence_restructure=p_restructure,
                             p_transition_add=p_transition,
                             p_minor_errors=p_errors,
                             tone=tone,
+                            language=language_option,
                             seed=42  # For reproducible results
                         )
                         
-                        if input_method != "Fichiers multiples":
+                        if input_method != "Multiple Files":
                             # Single text processing
                             process_single_text(user_text, humanizer, preserve_meaning, show_analysis)
                         else:
@@ -236,13 +276,26 @@ def main():
                             process_multiple_files(files_data, humanizer, preserve_meaning, show_analysis)
                             
                     except Exception as e:
-                        st.error(f"❌ Erreur lors de la transformation : {str(e)}")
-                        st.info("💡 Assurez-vous que le modèle SpaCy français est installé : `python -m spacy download fr_core_news_sm`")
+                        st.error(f"❌ Error during transformation: {str(e)}")
+                        st.info("💡 Make sure SpaCy models are installed:\n- `python -m spacy download en_core_web_sm`\n- `python -m spacy download fr_core_news_sm`")
 
 
 def process_single_text(text, humanizer, preserve_meaning, show_analysis):
     """Process a single text input"""
     start_time = time.time()
+    
+    # Detect language first
+    detected_lang = humanizer.detect_language(text)
+    
+    # Display language detection result
+    lang_labels = {"en": "🇺🇸 English", "fr": "🇫🇷 French"}
+    lang_classes = {"en": "lang-en", "fr": "lang-fr"}
+    
+    st.markdown(f"""
+    <div class="language-badge {lang_classes[detected_lang]}">
+        Detected Language: {lang_labels[detected_lang]}
+    </div>
+    """, unsafe_allow_html=True)
     
     # Get original text analysis
     original_analysis = humanizer.analyze_text_features(text)
@@ -256,14 +309,14 @@ def process_single_text(text, humanizer, preserve_meaning, show_analysis):
     processing_time = time.time() - start_time
     
     # Display results
-    st.markdown("### 📋 Texte Transformé")
+    st.markdown("### 📋 Transformed Text")
     st.markdown(f"```\n{transformed}\n```")
     
     # Download button
     st.download_button(
-        label="💾 Télécharger le résultat",
+        label="💾 Download Result",
         data=transformed,
-        file_name="texte_humanise.txt",
+        file_name=f"humanized_text_{detected_lang}.txt",
         mime="text/plain"
     )
     
@@ -277,96 +330,113 @@ def process_single_text(text, humanizer, preserve_meaning, show_analysis):
 
 def process_multiple_files(files_data, humanizer, preserve_meaning, show_analysis):
     """Process multiple files in batch"""
-    st.markdown("### 📁 Traitement par Lots")
+    st.markdown("### 📁 Batch Processing")
     
     results = []
     progress_bar = st.progress(0)
     
     for i, file_data in enumerate(files_data):
-        st.markdown(f"**Traitement de : {file_data['name']}**")
+        # Detect language for each file
+        detected_lang = humanizer.detect_language(file_data['content'])
+        lang_labels = {"en": "🇺🇸 English", "fr": "🇫🇷 French"}
+        
+        st.markdown(f"**Processing: {file_data['name']}** ({lang_labels[detected_lang]})")
         
         # Transform text
         transformed = humanizer.humanize_text(file_data['content'], preserve_meaning=preserve_meaning)
         
         results.append({
             "filename": file_data['name'],
+            "language": detected_lang,
             "original": file_data['content'],
             "transformed": transformed
         })
         
         # Show preview
-        with st.expander(f"Aperçu : {file_data['name']}"):
+        with st.expander(f"Preview: {file_data['name']} ({lang_labels[detected_lang]})"):
             col1, col2 = st.columns(2)
             with col1:
-                st.markdown("**Original :**")
+                st.markdown("**Original:**")
                 st.text_area("", value=file_data['content'][:300] + "...", height=100, key=f"orig_{i}")
             with col2:
-                st.markdown("**Transformé :**")
+                st.markdown("**Transformed:**")
                 st.text_area("", value=transformed[:300] + "...", height=100, key=f"trans_{i}")
         
         progress_bar.progress((i + 1) / len(files_data))
     
-    # Create downloadable zip or combined file
+    # Create downloadable combined file
     combined_results = "\n\n" + "="*50 + "\n\n".join([
-        f"FICHIER: {result['filename']}\n\n{result['transformed']}" 
+        f"FILE: {result['filename']} (Language: {result['language'].upper()})\n\n{result['transformed']}" 
         for result in results
     ])
     
     st.download_button(
-        label="💾 Télécharger tous les résultats",
+        label="💾 Download All Results",
         data=combined_results,
-        file_name="textes_humanises_batch.txt",
+        file_name="humanized_texts_batch.txt",
         mime="text/plain"
     )
     
-    st.success(f"✅ {len(results)} fichier(s) traité(s) avec succès !")
+    # Language distribution summary
+    lang_counts = {}
+    for result in results:
+        lang_counts[result['language']] = lang_counts.get(result['language'], 0) + 1
+    
+    st.markdown("### 📊 Processing Summary")
+    cols = st.columns(len(lang_counts))
+    for i, (lang, count) in enumerate(lang_counts.items()):
+        lang_labels = {"en": "🇺🇸 English", "fr": "🇫🇷 French"}
+        with cols[i]:
+            st.metric(lang_labels[lang], f"{count} files")
+    
+    st.success(f"✅ {len(results)} file(s) processed successfully!")
 
 
 def display_statistics(original_analysis, transformed_analysis, processing_time):
     """Display comparison statistics"""
-    st.markdown("### 📊 Statistiques Comparatives")
+    st.markdown("### 📊 Comparative Statistics")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.metric(
-            "Mots",
+            "Words",
             transformed_analysis['word_count'],
             delta=transformed_analysis['word_count'] - original_analysis['word_count']
         )
     
     with col2:
         st.metric(
-            "Phrases",
+            "Sentences",
             transformed_analysis['sentence_count'],
             delta=transformed_analysis['sentence_count'] - original_analysis['sentence_count']
         )
     
     with col3:
         st.metric(
-            "Diversité lexicale",
+            "Lexical Diversity",
             f"{transformed_analysis['lexical_diversity']:.3f}",
             delta=f"{transformed_analysis['lexical_diversity'] - original_analysis['lexical_diversity']:.3f}"
         )
     
     with col4:
         st.metric(
-            "Temps de traitement",
+            "Processing Time",
             f"{processing_time:.2f}s"
         )
 
 
 def display_detailed_analysis(original_analysis, transformed_analysis):
     """Display detailed analysis with charts"""
-    st.markdown("### 🔍 Analyse Détaillée")
+    st.markdown("### 🔍 Detailed Analysis")
     
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("#### 📈 Longueur Moyenne des Phrases")
+        st.markdown("#### 📈 Average Sentence Length")
         comparison_data = pd.DataFrame({
-            'Version': ['Original', 'Transformé'],
-            'Longueur Moyenne': [
+            'Version': ['Original', 'Transformed'],
+            'Average Length': [
                 original_analysis['avg_sentence_length'],
                 transformed_analysis['avg_sentence_length']
             ]
@@ -375,14 +445,15 @@ def display_detailed_analysis(original_analysis, transformed_analysis):
         fig = px.bar(
             comparison_data, 
             x='Version', 
-            y='Longueur Moyenne',
+            y='Average Length',
             color='Version',
-            title="Comparaison de la longueur des phrases"
+            title="Sentence Length Comparison",
+            color_discrete_map={'Original': '#ff7f0e', 'Transformed': '#1f77b4'}
         )
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        st.markdown("#### 🏷️ Distribution des Classes Grammaticales")
+        st.markdown("#### 🏷️ Part-of-Speech Distribution")
         
         # Combine POS data
         all_pos = set(original_analysis['pos_distribution'].keys()) | set(transformed_analysis['pos_distribution'].keys())
@@ -391,7 +462,7 @@ def display_detailed_analysis(original_analysis, transformed_analysis):
         for pos in all_pos:
             pos_data.extend([
                 {'POS': pos, 'Count': original_analysis['pos_distribution'].get(pos, 0), 'Version': 'Original'},
-                {'POS': pos, 'Count': transformed_analysis['pos_distribution'].get(pos, 0), 'Version': 'Transformé'}
+                {'POS': pos, 'Count': transformed_analysis['pos_distribution'].get(pos, 0), 'Version': 'Transformed'}
             ])
         
         pos_df = pd.DataFrame(pos_data)
@@ -402,24 +473,75 @@ def display_detailed_analysis(original_analysis, transformed_analysis):
             y='Count', 
             color='Version',
             barmode='group',
-            title="Distribution des classes grammaticales"
+            title="Part-of-Speech Distribution",
+            color_discrete_map={'Original': '#ff7f0e', 'Transformed': '#1f77b4'}
         )
         st.plotly_chart(fig, use_container_width=True)
     
-    # Complexity comparison
-    st.markdown("#### 🧠 Score de Complexité")
-    complexity_data = pd.DataFrame({
-        'Métrique': ['Complexité'],
-        'Original': [original_analysis['complexity_score']],
-        'Transformé': [transformed_analysis['complexity_score']]
-    })
+    # Complexity and language info
+    col1, col2 = st.columns(2)
     
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name='Original', x=complexity_data['Métrique'], y=complexity_data['Original']))
-    fig.add_trace(go.Bar(name='Transformé', x=complexity_data['Métrique'], y=complexity_data['Transformé']))
-    fig.update_layout(title="Comparaison de la complexité textuelle")
+    with col1:
+        st.markdown("#### 🧠 Complexity Score")
+        complexity_data = pd.DataFrame({
+            'Metric': ['Complexity'],
+            'Original': [original_analysis['complexity_score']],
+            'Transformed': [transformed_analysis['complexity_score']]
+        })
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(name='Original', x=complexity_data['Metric'], y=complexity_data['Original'], marker_color='#ff7f0e'))
+        fig.add_trace(go.Bar(name='Transformed', x=complexity_data['Metric'], y=complexity_data['Transformed'], marker_color='#1f77b4'))
+        fig.update_layout(title="Text Complexity Comparison")
+        
+        st.plotly_chart(fig, use_container_width=True)
     
-    st.plotly_chart(fig, use_container_width=True)
+    with col2:
+        st.markdown("#### 🌍 Language Information")
+        
+        # Display language detection info
+        detected_lang = original_analysis.get('detected_language', 'unknown')
+        lang_info = {
+            'en': {'name': 'English', 'flag': '🇺🇸', 'family': 'Germanic'},
+            'fr': {'name': 'French', 'flag': '🇫🇷', 'family': 'Romance'}
+        }
+        
+        if detected_lang in lang_info:
+            info = lang_info[detected_lang]
+            st.markdown(f"""
+            **Detected Language:** {info['flag']} {info['name']}  
+            **Language Family:** {info['family']}  
+            **Processing Model:** SpaCy {detected_lang}_core_web_sm
+            """)
+        
+        # Additional metrics
+        st.markdown("**Text Metrics:**")
+        st.markdown(f"- Characters: {len(original_analysis.get('text', ''))}")
+        st.markdown(f"- Average word length: {sum(len(word) for word in original_analysis.get('text', '').split()) / max(len(original_analysis.get('text', '').split()), 1):.1f}")
+
+
+# Utility functions for enhanced features
+def get_language_info(lang_code):
+    """Get detailed language information"""
+    info = {
+        'en': {
+            'name': 'English',
+            'native_name': 'English',
+            'flag': '🇺🇸',
+            'family': 'Indo-European → Germanic → West Germanic',
+            'speakers': '1.5 billion',
+            'countries': 'US, UK, Canada, Australia, etc.'
+        },
+        'fr': {
+            'name': 'French',
+            'native_name': 'Français',
+            'flag': '🇫🇷',
+            'family': 'Indo-European → Romance → Gallo-Romance',
+            'speakers': '280 million',
+            'countries': 'France, Canada, Belgium, Switzerland, etc.'
+        }
+    }
+    return info.get(lang_code, {})
 
 
 if __name__ == "__main__":
